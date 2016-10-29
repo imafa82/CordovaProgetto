@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Parchi Sicuri</title>
+
+    <meta name="format-detection" content="telephone=no" />
+  <!-- WARNING: for iOS 7, remove the width=device-width and height=device-height attributes. See https://issues.apache.org/jira/browse/CB-4323 -->
+  <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, height=device-height" />
+
+    <!-- Makes your prototype chrome-less once bookmarked to your phone's home screen -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+    <!-- Include the compiled Ratchet CSS -->
+  <link href="css/ratchet.css" rel="stylesheet">
+  <link href="css/bootstrap.css" rel="stylesheet">
+  <link href="css/mystyle.css" rel="stylesheet">
+<!--<link href="css/ratchet-theme-ios.css" rel="stylesheet">-->
+  <!--<link href="css/ratchet-theme-android.css" rel="stylesheet">-->
+    <!-- Include the compiled Ratchet JS -->
+    <script src="js/jquery.min.js"></script>
+    <script src="js/ratchet.js"></script>
+ <script>
+                            
+$(document).ready(function() {
+                               
+//-------------------------------------------------
+// GESTIONE PAGINE				    
+//-------------------------------------------------
+			    
+$(".bar-tab a").on("touchend", function (e) {
+	e.preventDefault();
+	$(".bar-tab a").removeClass("active");
+	$(e.currentTarget).addClass("active");
+
+    var  fromPage = $("#pages .current"),
+    nextPage = $(e.currentTarget.hash);
+	cambioPagina(fromPage,nextPage);
+});
+
+function cambioPagina(daPagina, aPagina) {
+    daPagina.removeClass("current");
+    aPagina.addClass("current");
+}
+//-------------------------------------------------
+// GESTIONE CREAZIONE DB				    
+//-------------------------------------------------
+
+aproDatabase();
+
+function aproDatabase() {
+	db = window.openDatabase("PARCHISICURI", "1.0", "Database Parchi Sicuri", 200000);
+	db.transaction(creoDb, onDbError, onDbSuccess);		
+}
+
+function creoDb(tx) {
+	//tx.executeSql("DROP TABLE SEGNALAZIONI");	
+	tx.executeSql("CREATE TABLE IF NOT EXISTS SEGNALAZIONI (id INTEGER PRIMARY KEY AUTOINCREMENT, titolo, foto, datains, lat, lon, segnalata)");
+	//tx.executeSql("INSERT INTO SEGNALAZIONI (titolo, lat,lon) VALUES (?,?,?)", ['Titolo di test', '-', '-']);
+	tx.executeSql("SELECT * FROM SEGNALAZIONI ORDER By id DESC", [], onSelectSuccess, onDbError);	
+}
+
+function onDbError(error) {
+	alert("Errore database " + error.message);
+}
+
+function onDbSuccess() {
+	alert("OK db Creato");
+}
+
+function onSelectSuccess(tx,dati) {	
+	len = dati.rows.length;
+	datiRiga = '';
+	if(len!=0) {
+		for(var i=0; i<len; i++){
+			buildRiga(dati.rows.item(i).id,dati.rows.item(i).titolo, dati.rows.item(i).foto, dati.rows.item(i).datains, dati.rows.item(i).lat, dati.rows.item(i).lon);
+		}
+	}
+	
+	$("#page-home ul").append(datiRiga);
+}
+
+function buildRiga(rid,rtitolo,rimage,rdatains,rlat,rlon) {
+	datiRiga += "<li class='table-view-cell media' id='item" + rid + "'>"
+				+ "<div class='slider'>"
+				+ "    <div class='slide-group'>"
+				+ "       <div class='slide'>"	
+		        + "	    <img class='media-object pull-left' src='" + rimage + "'>"
+				+ "	    <div class='media-body'>"
+				+ "                <p><span class='titolo'>" + rtitolo + "</p>"
+				+ "                <p>Lat:<span class='lat'>" + rlat + "</span> Long: <span class='long'>" + rlon + "</span></p>"
+				+ "	    </div>"
+				+ " 	    <div class='datains'>"
+		        + "            <p>" + rdatains + "</p>"
+		        + "         </div>"		
+				+ "      </div>"
+				+ "       <div class='slide'>"
+				+ "	    <div class='gestione'>"
+				+ "		  <div class='indietro'>"
+				+ "		     <span class='icon icon-left-nav'></span>"
+				+ "		  </div>"
+				+ "       <div class='upload'>"
+				+ "          <a href='#item" + rid + "'><span class='icon icon-share'></span></a>"
+				+ "       </div>"
+				+ "		  <div class='operazioni'>"
+				+ "		     <a href='#item" + rid + "'><span class='icon icon-trash'></span></a>"
+				+ "		  </div>"   
+				+ "	    </div>"
+		        + "         <div class='status'></div>"
+				+ "     </div>"
+				+ "    </div>"   
+				+ "</div>"
+				+ "</li>";				
+}
+
+//-------------------------------------------------
+// GESTIONE FOTO				    
+//-------------------------------------------------
+
+$("#savenote").on("touchend", function (e) {
+	e.preventDefault();
+	var d = new Date();
+	var dataoggi = d.getDate() + "/" + d.getMonth()+1; 
+	note.titolo = $("input:text[name=titolo]").val();
+	note.foto = $("#noteimg").attr("src");
+	note.latitudine = $(".coordinate .lat").text();
+	note.longitudine = $(".coordinate .lon").text();
+	note.datains = dataoggi;
+	
+	if (note.titolo != '' && note.foto != 'img/noimages1.png' ) {
+		aggiungoRiga();
+	} else {
+		alert("Inserisci il dato mancante");
+	}
+	
+});
+
+function aggiungoRiga() {
+	db.transaction(		
+	  function (tx) {
+		//tx.executeSql("INSERT INTO SEGNALAZIONI (titolo, foto,datains,lat,lon,segnalata) VALUES (?,?,?,?,?,?)", [note.titolo, note.foto, note.datains, note.latitudine, note.longitudine, '0'])		  
+	  },
+	  onDbError,
+	  function () {
+	  	    alert("Messaggio salvato");
+	  	    appendRow(note.titolo, note.foto, note.datains, note.latitudine, note.longitudine);  	
+			 $("input:text[name=titolo]").val('');
+			 $("#noteimg").attr("src", 'img/noimages.png');
+			 $(".coordinate .lat").text('');
+			 $(".coordinate .lon").text('');
+	  }       
+	);
+}
+
+function appendRow (title, image, datains, lat, lon) {
+	newid++;
+	datiRiga = '';
+	buildRiga(newid,title, image, datains, lat, lon);
+	$("#page-home ul").prepend(datiRiga);
+}
+
+});
+                
+</script>
+</head>
+
+<body>
+	<header class="bar bar-nav">
+		<img src="img/Icon61x61.png" style="float:left; height:35px; margin-top: 3px;">
+		<h1 class="title">parchi sicuri</h1>
+	</header>
+        
+	<nav class="bar bar-tab">
+		<a class="tab-item active" href="#page-home" data-ignore="push">
+            <span class="icon icon-home"></span>
+            <span class="tab-label">Home</span>
+		</a>
+		<a class="tab-item" href="#page-foto" data-ignore="push">
+            <span class="icon icon-download"></span>
+            <span class="tab-label">Foto</span>
+		</a>
+		<a class="tab-item" href="#page-segnalati" data-ignore="push">
+            <span class="icon icon-star-filled"></span>
+           	<span class="tab-label">Segnalati</span>
+		</a>
+		<a class="tab-item" href="#page-cerca" data-ignore="push">
+            <span class="icon icon-person"></span>
+           	<span class="tab-label">Setting</span>
+		</a>
+	</nav>
+        
+   	<!-- Wrap all non-bar HTML in the .content div (this is actually what scrolls) -->
+	<div class="content">
+   	
+	<div id="pages">
+
+		<!--home-->
+		<div id="page-home" class="current">
+		  	<div class="content-padded">
+				<p>Ultime segnalazioni salvate</p>
+			</div>	
+
+		    <ul class="table-view">
+				<li class='table-view-cell media' id='itemX'>
+					<div class='slider'>
+					    <div class='slide-group'>
+					      <div class='slide'>	
+				    	   		<img class='media-object pull-left' src=''>
+						    	<div class='media-body'>
+					                <p><span class='titolo'>TITOLO</p>
+					                <p>Lat:<span class='lat'>XX</span> Long: <span class='long'>YY</span></p>
+						    	</div>
+					 	    	<div class='datains'>
+				                	<p>31/12</p>
+				            	</div>		
+					      </div>
+					      <div class='slide'>
+						    <div class='gestione'>
+								<div class='indietro'>
+							   		<span class='icon icon-left-nav'></span>
+								</div>
+					            <div class='upload'>
+					                <a href='#itemX'><span class='icon icon-share'></span></a>
+					            </div>
+								<div class='operazioni'>
+							   		<a href='#itemX'><span class='icon icon-trash'></span></a>
+								</div>  
+						    </div>
+				            <div class='status'></div>
+					      </div>
+					    </div>   
+					</div>
+				</li>
+				<li class='table-view-cell media' id='itemX'>
+					<div class='slider'>
+					    <div class='slide-group'>
+					      <div class='slide'>	
+				    	   		<img class='media-object pull-left' src=''>
+						    	<div class='media-body'>
+					                <p><span class='titolo'>TITOLO</p>
+					                <p>Lat:<span class='lat'>XX</span> Long: <span class='long'>YY</span></p>
+						    	</div>
+					 	    	<div class='datains'>
+				                	<p>31/12</p>
+				            	</div>		
+					      </div>
+					      <div class='slide'>
+						    <div class='gestione'>
+								<div class='indietro'>
+							   		<span class='icon icon-left-nav'></span>
+								</div>
+					            <div class='upload'>
+					                <a href='#itemX'><span class='icon icon-share'></span></a>
+					            </div>
+								<div class='operazioni'>
+							   		<a href='#itemX'><span class='icon icon-trash'></span></a>
+								</div>  
+						    </div>
+				            <div class='status'></div>
+					      </div>
+					    </div>   
+					</div>
+				</li>	    
+		    </ul>
+		</div>
+
+		<!--foto-->
+		<div id="page-foto">
+			<div class="content-padded">                     
+				<p>Scatta una foto da inviare</p>
+				<input type="text" placeholder="Titolo foto" name="titolo">
+				<div class="pulsanti">
+					<div class="fotocamera">
+						<span class="icon icon-download"></span>
+					</div>
+                    <div class="coordinate">
+                    	<p><span class="glyphicon glyphicon-map-marker"></span> <span class="lat">-</span> :: <span class="lon">-</span></p>
+					</div>
+				</div>
+				<img src="img/noimages.png" id="noteimg" width="110px" height="110px">
+				<input type="submit" class="btn btn-positive btn-block" id="savenote" value="Salva">
+				<div id="mappa">Mappa</div>
+			</div>
+		</div>
+		
+		<!--Segnalati-->
+		<div id="page-segnalati">
+			<div class="content-padded">
+				<p>Foto segnalate</p>
+			</div>
+			<ul class="table-view">			
+			</ul>
+		</div>
+		
+		<!--Settings-->                
+		<div id="page-cerca">
+			<p class="content-padded">Imposta i dati</p>
+			<form class="input-group">
+				<div class="input-row">
+					<label>Nome</label>
+					<input type="text" placeholder="Davide">
+				</div>
+				<div class="input-row">
+					<label>Email</label>
+					<input type="email" placeholder="davide@creareapp.com">
+				</div>
+				<div class="input-row">
+					<label>Username</label>
+					<input type="text" placeholder="XCDFF">
+				</div>
+			</form>
+			<p class="content-padded">
+				<input type="submit" class="btn btn-positive btn-block" id="savesetting" value="Salva">
+			</p>
+		</div>
+
+	</div> <!--pages-->
+            
+	</div>
+	<div id="toast"><div class="msg"><p>Posizionamento assoluto</p></div></div>
+ </body>
+</html>
